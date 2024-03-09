@@ -1,4 +1,4 @@
-package org.project;
+package org.chat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,13 +16,12 @@ public class Client {
     }
 
     public static void main(String[] args){
+        System.out.println("CLIENT IS RUNNING");
         Client client = new Client(getNickname());
         client.start("127.0.0.1", 2137, "230.0.0.0", 4446);
     }
 
     public void start(String serverAddress, int serverPort, String multicastAddress, int multicastPort){
-        System.out.println("CLIENT IS RUNNING");
-
         try (Socket tcpSocket = new Socket(serverAddress, serverPort);
              PrintWriter out = new PrintWriter(tcpSocket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
@@ -47,15 +46,17 @@ public class Client {
                 System.out.printf("<%s>: ", nickname);
                 String msg = scanner.nextLine();
                 if (msg.equals("U")){
-                    sendDatagram(udpSocket, serverAddress, serverPort);
+                    sendUDPDatagram(udpSocket, serverAddress, serverPort);
                 }
-                if (msg.equals("M")){
-
+                else if (msg.equals("M")){
+                    sendMulticastDatagram(multicastSocket, multicastAddress, multicastPort);
                 }
                 else if (!msg.equals("")) {
                     out.println(msg);
                 }
             }
+        } catch (ConnectException ce){
+            System.out.println("Couldn't connect with the server: " + ce.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -71,12 +72,12 @@ public class Client {
             try {
                 String serverMessage;
                 while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("\n" + serverMessage);
+                    System.out.print("\n" + serverMessage);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                System.out.print("\nTCP connection with server has closed");
+                System.out.print("\nConnection with server has closed");
             }
         }
     }
@@ -95,7 +96,7 @@ public class Client {
                     DatagramPacket packet = new DatagramPacket(msgBuffer, msgBuffer.length);
                     socket.receive(packet);
                     String data = new String(packet.getData(), 0, packet.getLength());
-                    System.out.printf("\n[UDP]:\n%s", data);
+                    System.out.printf("\n[UDP]:\n%s\n", data);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -117,7 +118,7 @@ public class Client {
                     DatagramPacket packet = new DatagramPacket(msgBuffer, msgBuffer.length);
                     socket.receive(packet);
                     String data = new String(packet.getData(), 0, packet.getLength());
-                    System.out.printf("\n[Multicast]:\n%s", data);
+                    System.out.printf("\n[Multicast]:\n%s\n", data);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -125,7 +126,23 @@ public class Client {
         }
     }
 
-    private static void sendDatagram(DatagramSocket socket, String host, int port) throws IOException {
+    private static void sendUDPDatagram(DatagramSocket socket, String host, int port) throws IOException {
+        if (!socket.isClosed()){
+            String asciiArt = """
+                  ██████╗  ██████╗ ██████╗ ███████╗██████╗\s
+                  ██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗
+                  ██████╔╝██║   ██║██████╔╝█████╗  ██████╔╝
+                  ██╔══██╗██║   ██║██╔══██╗██╔══╝  ██╔══██╗
+                  ██████╔╝╚██████╔╝██████╔╝███████╗██║  ██║
+                  ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝\s""";
+            byte[] data = asciiArt.getBytes();
+            InetAddress address = InetAddress.getByName(host);
+            DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
+            socket.send(packet);
+        }
+    }
+
+    private static void sendMulticastDatagram(MulticastSocket socket, String host, int port) throws IOException {
         if (!socket.isClosed()){
             String asciiArt = """
                   ██████╗  ██████╗ ██████╗ ███████╗██████╗\s

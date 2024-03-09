@@ -1,0 +1,2 @@
+Run server: java -cp build/classes/java/main org.chat.Server
+Run client: java -cp build/classes/java/main org.chat.Client
