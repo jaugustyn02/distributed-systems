@@ -4,129 +4,182 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.net.*;
+import java.util.*;
 
 
 public class Server {
-    private static final Map<Long, BlockingQueue<ClientMessage>> clientsMsgQueue = new HashMap<>();
-    private static final Object mapLock = new Object();
+    private ServerSocket serverTCPSocket = null;
+    private final Map<Long, PrintWriter> clientTCPOutStreams = new HashMap<>();
+    private final Map<Long, Socket> clientSockets = new HashMap<>();
+    private final Object clientOutStreamsLock = new Object();
+    private final Object clientSocketsLock = new Object();
 
-    private record ClientMessage(String nickname, String message) {
-        @Override
-            public String toString() {
-                return String.format("[%s]: %s", nickname, message);
-            }
-        }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         Server server = new Server();
         server.start(2137);
     }
 
-    public void start(int portNumber){
+    public void start(int portNumber) {
         System.out.println("SERVER IS RUNNING ON PORT: " + portNumber);
 
-        try (ServerSocket serverSocket = new ServerSocket(portNumber)) {
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
-                String clientAddress = clientSocket.getInetAddress().getHostAddress();
-                int clientPort = clientSocket.getPort();
-                System.out.printf("New client connected with address: %s and port: %d\n", clientAddress, clientPort);
-                ClientHandler clientHandler = new ClientHandler(clientSocket);
-                clientHandler.start();
+        (new ServerConsole()).start();
+
+        try {
+            DatagramSocket serverUDPSocket = new DatagramSocket(portNumber);
+            (new ClientUDPHandler(serverUDPSocket)).start();
+
+            serverTCPSocket = new ServerSocket(portNumber);
+            while (!serverTCPSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverTCPSocket.accept();
+                    (new ClientTCPHandler(clientSocket)).start();
+                } catch (SocketException se) {
+                    break;
+                }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            if (!serverTCPSocket.isClosed()) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private static class ClientHandler extends Thread {
+    private class ClientTCPHandler extends Thread {
         private final Socket clientSocket;
         private String clientNickname;
         private Long clientID;
 
-        public ClientHandler(Socket socket){
-            this.clientSocket = socket;
+        public ClientTCPHandler(Socket clientSocket) {
+            this.clientSocket = clientSocket;
             this.clientID = null;
             this.clientNickname = null;
         }
 
-        public void run(){
+        public void run() {
             clientID = Thread.currentThread().getId();
 
-            PrintWriter out = null;
-            BufferedReader in = null;
+            String clientAddress = clientSocket.getInetAddress().getHostAddress();
+            int clientPort = clientSocket.getPort();
+            System.out.printf(
+                    "\nNew client connected with address: %s, port: %d and clientID: %d",
+                    clientAddress, clientPort, clientID
+            );
 
-            synchronized (mapLock){
-                clientsMsgQueue.put(clientID, new LinkedBlockingQueue<>());
+            synchronized (clientSocketsLock){
+                clientSockets.put(clientID, clientSocket);
             }
 
-            try {
-                out = new PrintWriter(clientSocket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            try (PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                 BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
+                // Nickname acknowledge
                 clientNickname = in.readLine();
                 out.println(clientNickname);
 
-                String msg;
-                while (true) {
-                    synchronized (mapLock) {
-                        BlockingQueue<ClientMessage> msgQueue = clientsMsgQueue.get(clientID);
-                        for (ClientMessage clientMessage : msgQueue) {
-                            out.println(clientMessage.toString());
-                        }
-                        msgQueue.clear();
-                    }
+                synchronized (clientOutStreamsLock) {
+                    clientTCPOutStreams.put(clientID, out);
+                }
 
-                    if (in.ready()) {
-                        msg = in.readLine();
-                        if (msg == null) break;
-                        System.out.printf("[%s]: %s\n", clientNickname, msg);
-                        ClientMessage clientMessage = new ClientMessage(clientNickname, msg);
-                        synchronized (mapLock) {
-                            for (Map.Entry<Long, BlockingQueue<ClientMessage>> entry : clientsMsgQueue.entrySet()) {
-                                if (!Objects.equals(entry.getKey(), clientID)) {
-                                    entry.getValue().add(clientMessage);
-                                }
+                String msg;
+                while ((msg = in.readLine()) != null) {
+                    System.out.printf("\nReceived message from client with ID: %d", clientID);
+                    ClientMessage clientMessage = new ClientMessage(clientNickname, msg);
+                    synchronized (clientOutStreamsLock) {
+                        for (Map.Entry<Long, PrintWriter> entry : clientTCPOutStreams.entrySet()) {
+                            if (!Objects.equals(entry.getKey(), clientID)) {
+                                entry.getValue().println(clientMessage);
                             }
                         }
                     }
                 }
-//                while ((msg = in.readLine()) != null) {
-//                    System.out.printf("[%s]: %s\n", clientNickname, msg);
-//                    ClientMessage clientMessage = new ClientMessage(clientNickname, msg);
-//                    synchronized (mapLock){
-//                        for (Map.Entry<Long, BlockingQueue<ClientMessage>> set : clientsMsgQueue.entrySet()){
-//                            if (!Objects.equals(set.getKey(), clientID)){
-//                                set.getValue().add(clientMessage);
-//                            }
-//                        }
-//                    }
-//                }
-
-
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 try {
-                    if (out != null) {
-                        out.close();
+                    clientSocket.close();
+                    synchronized (clientOutStreamsLock) {
+                        clientTCPOutStreams.remove(clientID);
                     }
-                    if (in != null) {
-                        in.close();
-                        clientSocket.close();
+                    synchronized (clientSocketsLock){
+                        clientSockets.remove(clientID);
                     }
-                } catch (IOException e){
+                    System.out.printf("\nClient with ID: %d has disconnected\n", clientID);
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
     }
 
+    private record ClientMessage(String nickname, String message) {
+        @Override
+        public String toString() {
+            return String.format("<%s>: %s", nickname, message);
+        }
+    }
+
+    private class ClientUDPHandler extends Thread{
+        private final DatagramSocket serverSocket;
+        private final byte[] msgBuffer = new byte[1024];
+
+        public ClientUDPHandler(DatagramSocket serverSocket){
+            this.serverSocket = serverSocket;
+        }
+
+        public void run(){
+            try {
+                while(true){
+                    DatagramPacket packet = new DatagramPacket(msgBuffer, msgBuffer.length);
+                    serverSocket.receive(packet);
+                    InetAddress senderAddress = packet.getAddress();
+                    int senderPort = packet.getPort();
+                    String data = new String(packet.getData(), 0, packet.getLength());
+                    System.out.printf("\nReceived datagram from client with address: %s and port: %d\n", senderAddress.getHostAddress(), senderPort);
+                    synchronized (clientSocketsLock) {
+                        for (Socket socket : clientSockets.values()) {
+                            if (socket.getInetAddress() != senderAddress && socket.getPort() != senderPort) {
+                                packet.setAddress(socket.getInetAddress());
+                                packet.setPort(socket.getPort());
+                                serverSocket.send(packet);
+                            }
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } finally {
+                serverSocket.close();
+            }
+        }
+    }
+
+    private class ServerConsole extends Thread {
+        public void run() {
+            String command;
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("<server> ");
+            while (!Objects.equals(command = scanner.nextLine(), "shutdown")) {
+                if (Objects.equals(command, "count")) {
+                    int no_clients = clientTCPOutStreams.size();
+                    System.out.printf("<server> Connected clients: %d\n", no_clients);
+                }
+                if (Objects.equals(command, "help")){
+                    System.out.println("Available commands:");
+                    System.out.println("\t-count\t\tshows number of currently connected clients");
+                    System.out.println("\t-shutdown\tshutdowns server");
+                    System.out.println("\t-help\t\tshow list of available commands\n");
+                }
+                System.out.print("<server>: ");
+            }
+            try {
+                if (serverTCPSocket != null) {
+                    serverTCPSocket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

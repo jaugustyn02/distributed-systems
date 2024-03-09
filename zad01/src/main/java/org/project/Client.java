@@ -4,58 +4,140 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.Socket;
+import java.net.*;
 import java.util.Objects;
 import java.util.Scanner;
 
 public class Client {
+    private final String nickname;
 
-    public static void main(String[] args) throws IOException {
+    public Client(String nickname){
+        this.nickname = nickname;
+    }
+
+    public static void main(String[] args){
+        Client client = new Client(getNickname());
+        client.start("127.0.0.1", 2137, "230.0.0.0", 4446);
+    }
+
+    public void start(String serverAddress, int serverPort, String multicastAddress, int multicastPort){
         System.out.println("CLIENT IS RUNNING");
-        String hostName = "localhost";
-        int PortNumber = 2137;
 
-        try (Socket socket = new Socket(hostName, PortNumber)) {
+        try (Socket tcpSocket = new Socket(serverAddress, serverPort);
+             PrintWriter out = new PrintWriter(tcpSocket.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
+             DatagramSocket udpSocket = new DatagramSocket(tcpSocket.getLocalPort());
+             MulticastSocket multicastSocket = new MulticastSocket(multicastPort)){
 
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            multicastSocket.joinGroup(InetAddress.getByName(multicastAddress));
 
-            String nickname;
             while (true){
-                nickname = getNickname();
                 out.println(nickname);
                 String response = in.readLine();
-                if (Objects.equals(response, nickname)){
-                    System.out.println("Connected successfully as " + nickname);
-                    break;
-                }
+                if (Objects.equals(response, nickname)) break;
             }
+            System.out.printf("Connected successfully to server as '%s'\n", nickname);
 
-            Thread messageReader = new Thread(() -> {
-                try {
-                    String serverMessage;
-                    while ((serverMessage = in.readLine()) != null) {
-                        System.out.println("\n"+serverMessage);
-                    }
-                } catch (IOException e) {
-                    if (!socket.isClosed()) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            messageReader.start();
+            (new TCPReceiver(in)).start();
+            (new UDPReceiver(udpSocket)).start();
+            (new MulticastReceiver(multicastSocket)).start();
 
-            String msg = "";
             Scanner scanner = new Scanner(System.in);
-            while (!msg.equals("/q")){
-                System.out.print("<tcp> ");
-                msg = scanner.nextLine();
-                if (!msg.equals("")  && msg.charAt(0) != '/')
-                    out.println(msg);
-            }
+            while (true){
+                System.out.printf("<%s>: ", nickname);
+                String msg = scanner.nextLine();
+                if (msg.equals("U")){
+                    sendDatagram(udpSocket, serverAddress, serverPort);
+                }
+                if (msg.equals("M")){
 
+                }
+                else if (!msg.equals("")) {
+                    out.println(msg);
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private static class TCPReceiver extends Thread {
+        private final BufferedReader in;
+
+        public TCPReceiver(BufferedReader in){
+            this.in = in;
+        }
+        public void run() {
+            try {
+                String serverMessage;
+                while ((serverMessage = in.readLine()) != null) {
+                    System.out.println("\n" + serverMessage);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                System.out.print("\nTCP connection with server has closed");
+            }
+        }
+    }
+
+    private static class UDPReceiver extends Thread {
+        private final DatagramSocket socket;
+        private final byte[] msgBuffer = new byte[1024];
+
+        public UDPReceiver(DatagramSocket socket){
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                while (true) {
+                    DatagramPacket packet = new DatagramPacket(msgBuffer, msgBuffer.length);
+                    socket.receive(packet);
+                    String data = new String(packet.getData(), 0, packet.getLength());
+                    System.out.printf("\n[UDP]:\n%s", data);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static class MulticastReceiver extends Thread {
+        private final MulticastSocket socket;
+        private final byte[] msgBuffer = new byte[1024];
+
+        private MulticastReceiver(MulticastSocket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                while (true) {
+                    DatagramPacket packet = new DatagramPacket(msgBuffer, msgBuffer.length);
+                    socket.receive(packet);
+                    String data = new String(packet.getData(), 0, packet.getLength());
+                    System.out.printf("\n[Multicast]:\n%s", data);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void sendDatagram(DatagramSocket socket, String host, int port) throws IOException {
+        if (!socket.isClosed()){
+            String asciiArt = """
+                  ██████╗  ██████╗ ██████╗ ███████╗██████╗\s
+                  ██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗
+                  ██████╔╝██║   ██║██████╔╝█████╗  ██████╔╝
+                  ██╔══██╗██║   ██║██╔══██╗██╔══╝  ██╔══██╗
+                  ██████╔╝╚██████╔╝██████╔╝███████╗██║  ██║
+                  ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝\s""";
+            byte[] data = asciiArt.getBytes();
+            InetAddress address = InetAddress.getByName(host);
+            DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
+            socket.send(packet);
         }
     }
 
