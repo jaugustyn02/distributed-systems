@@ -12,8 +12,10 @@ public class Server {
     private ServerSocket serverTCPSocket = null;
     private final Map<Integer, PrintWriter> clientTCPOutStreams = new HashMap<>();
     private final Map<Integer, Socket> clientSockets = new HashMap<>();
+    private final Map<Integer, String> clientNicknames = new HashMap<>();
     private final Object clientOutStreamsLock = new Object();
     private final Object clientSocketsLock = new Object();
+    private final Object clientNicknamesLock = new Object();
 
     public static void main(String[] args) {
         Server server = new Server();
@@ -72,6 +74,9 @@ public class Server {
                 // Acknowledge and acceptance of client nickname
                 clientNickname = in.readLine();
                 out.println(clientNickname);
+                synchronized (clientNicknamesLock){
+                    clientNicknames.put(clientID, clientNickname);
+                }
 
                 synchronized (clientOutStreamsLock) {
                     clientTCPOutStreams.put(clientID, out);
@@ -100,19 +105,15 @@ public class Server {
                     synchronized (clientSocketsLock){
                         clientSockets.remove(clientID);
                     }
+                    synchronized (clientNicknamesLock){
+                        clientNicknames.remove(clientID);
+                    }
                     System.out.printf("\nClient with address: %s, port: %d, clientID: %d has disconnected",
                             clientAddress, clientPort, clientID);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-        }
-    }
-
-    private record ClientMessage(String nickname, String message) {
-        @Override
-        public String toString() {
-            return String.format("<%s>: %s", nickname, message);
         }
     }
 
@@ -131,9 +132,13 @@ public class Server {
                     serverSocket.receive(packet);
                     InetAddress senderAddress = packet.getAddress();
                     int senderPort = packet.getPort();
-                    System.out.printf("\nReceived datagram from client with address: %s and port: %d",
-                            senderAddress.getHostAddress(), senderPort);
-
+                    int clientID = getClientID(senderAddress, senderPort);
+                    if (clientID != -1){
+                        System.out.printf("\nReceived datagram from client with ID: %d", clientID);
+                    } else {
+                        System.out.printf("\nReceived datagram from client with address: %s and port: %d",
+                                senderAddress.getHostAddress(), senderPort);
+                    }
                     synchronized (clientSocketsLock) {
                         for (Socket socket : clientSockets.values()) {
                             if (socket.getInetAddress() != senderAddress && socket.getPort() != senderPort) {
@@ -157,25 +162,37 @@ public class Server {
             String command;
             Scanner scanner = new Scanner(System.in);
             System.out.print("<server>: ");
-            while (!Objects.equals(command = scanner.nextLine(), "shutdown")) {
-                if (Objects.equals(command, "count")) {
-                    int no_clients = clientTCPOutStreams.size();
-                    System.out.printf("Connected clients: %d\n", no_clients);
-                }
-                if (Objects.equals(command, "help")){
-                    System.out.println("Available commands:");
-                    System.out.println("\t-count\t\tshows number of currently connected clients");
-                    System.out.println("\t-'ctrl + c'\tshutdowns server");
-                    System.out.println("\t-help\t\tshow list of available commands\n");
+            while (!Objects.equals(command = scanner.nextLine(), "exit")) {
+                switch (command) {
+                    case "count", "c" -> {
+                        int no_clients = clientTCPOutStreams.size();
+                        System.out.printf("Connected clients: %d\n", no_clients);
+                    }
+                    case "help", "h" -> {
+                        System.out.println("Available commands:");
+                        System.out.println("\t-count -c\tshow number of currently connected clients");
+                        System.out.println("\t-list -ls\tshow list of currently connected clients");
+                        System.out.println("\t-help -h\tshow list of available commands");
+                        System.out.println("\t-exit\t\tclose terminal");
+                        System.out.println("\t-'ctrl + c'\tshutdown server\n");
+                    }
+                    case "list", "ls" -> {
+                        System.out.println("ClientID\tNickname\tAddress\t\tPort");
+                        synchronized (clientSocketsLock) {
+                            synchronized (clientNicknamesLock) {
+                                for (Map.Entry<Integer, Socket> entry : clientSockets.entrySet()) {
+                                    int clientID = entry.getKey();
+                                    String nickname = clientNicknames.getOrDefault(clientID, "-");
+                                    String address = entry.getValue().getInetAddress().getHostAddress();
+                                    int port = entry.getValue().getPort();
+
+                                    System.out.printf("%-8d\t%-10s\t%-15s\t%d\n", clientID, nickname, address, port);
+                                }
+                            }
+                        }
+                    }
                 }
                 System.out.print("<server>: ");
-            }
-            try {
-                if (serverTCPSocket != null) {
-                    serverTCPSocket.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -185,5 +202,24 @@ public class Server {
         public static int getClientID(){
             return nextID++;
         }
+    }
+
+    private record ClientMessage(String nickname, String message) {
+        @Override
+        public String toString() {
+            return String.format("<%s>: %s", nickname, message);
+        }
+    }
+
+    private Integer getClientID(InetAddress address, Integer port){
+        synchronized (clientSocketsLock) {
+            for (Map.Entry<Integer, Socket> entry : clientSockets.entrySet()) {
+                Socket socket = entry.getValue();
+                if (address.equals(socket.getInetAddress()) && port.equals(socket.getPort())) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return -1;
     }
 }

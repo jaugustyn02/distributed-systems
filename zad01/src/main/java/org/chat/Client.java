@@ -77,7 +77,7 @@ public class Client {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                System.out.print("\nConnection with server has closed");
+                System.out.print("\nThe connection with the server has been closed");
             }
         }
     }
@@ -129,12 +129,17 @@ public class Client {
     private static void sendUDPDatagram(DatagramSocket socket, String host, int port) throws IOException {
         if (!socket.isClosed()){
             String asciiArt = """
-                  ██████╗  ██████╗ ██████╗ ███████╗██████╗\s
-                  ██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗
-                  ██████╔╝██║   ██║██████╔╝█████╗  ██████╔╝
-                  ██╔══██╗██║   ██║██╔══██╗██╔══╝  ██╔══██╗
-                  ██████╔╝╚██████╔╝██████╔╝███████╗██║  ██║
-                  ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝\s""";
+                                 ⠀⠀⠀⠀⢀⣴⣶⠿⠟⠻⠿⢷⣦⣄⠀⠀⠀
+                                 ⠀⠀⠀⠀⣾⠏⠀⠀⣠⣤⣤⣤⣬⣿⣷⣄⡀
+                                 ⠀⢀⣀⣸⡿⠀⠀⣼⡟⠁⠀⠀⠀⠀⠀⠙⣷
+                                 ⢸⡟⠉⣽⡇⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⢀⣿
+                                 ⣾⠇⠀⣿⡇⠀⠀⠘⠿⢶⣶⣤⣤⣶⡶⣿⠋
+                                 ⣿⠂⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠃
+                                 ⣿⡆⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠀
+                                 ⢿⡇⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⠀
+                                 ⠘⠻⠷⢿⡇⠀⠀⠀⣴⣶⣶⠶⠖⠀⢸⡟⠀
+                                 ⠀⠀⠀⢸⣇⠀⠀⠀⣿⡇⣿⡄⠀⢀⣿⠇⠀
+                                 ⠀⠀⠀⠘⣿⣤⣤⣴⡿⠃⠙⠛⠛⠛⠋⠀⠀""";
             byte[] data = asciiArt.getBytes();
             InetAddress address = InetAddress.getByName(host);
             DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
@@ -145,12 +150,17 @@ public class Client {
     private static void sendMulticastDatagram(MulticastSocket socket, String host, int port) throws IOException {
         if (!socket.isClosed()){
             String asciiArt = """
-                  ██████╗  ██████╗ ██████╗ ███████╗██████╗\s
-                  ██╔══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗
-                  ██████╔╝██║   ██║██████╔╝█████╗  ██████╔╝
-                  ██╔══██╗██║   ██║██╔══██╗██╔══╝  ██╔══██╗
-                  ██████╔╝╚██████╔╝██████╔╝███████╗██║  ██║
-                  ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝\s""";
+⡏⠙⠻⢦⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⠶⠟⠛⠿⠗⣦⣄⠀⠀⠀⠀
+⡇⠀⠀⠀⠀⠙⠦⣄⠀⠀⠀⠀⠀⠀⠀⢀⣴⠋⠀⠀⠀⠀⠀⠀⠀⠉⢧⡀⠀⠀
+⠙⢄⠀⠀⠀⠀⠀⠙⠲⢦⣀⠀⠀⠀⠀⣸⠋⠀⠀⠀⢠⣤⠀⠀⠀⠀⠘⢳⡀⠀
+⠀⠈⠳⣀⠀⠀⠀⠀⠀⠀⠉⠻⢦⣤⣼⠴⠖⠒⣄⠀⠈⠉⠀⠀⠀⠀⠀⠈⣵⠀
+⠀⠀⠀⠈⠳⣄⠀⠀⠀⠀⠀⠀⢀⣿⠋⠀⠀⠀⠈⢆⠀⠀⠀⠀⠀⠀⠀⠀⠀⢣
+⠀⠀⠀⠀⠀⠈⠳⢦⡀⠀⠀⠀⣸⠁⠀⠀⠀⠀⣠⣼⣷⡤⢤⣄⠀⠀⠀⠀⠀⣻
+⠀⠀⠀⠀⠀⠀⠀⠀⠙⢦⣤⣴⠋⠀⠀⠀⢀⣴⣿⣿⢿⠁⢘⣻⠀⠀⠀⠀⠀⣿
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣔⣢⣲⣼⡿⣿⣿⠟⠁⠀⢸⠾⠀⠀⠀⠀⠀⢸
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠫⣿⠋⠀⠀⠀⣾⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣿⠀⠀⠀⠀⠀⠀⠀""";
             byte[] data = asciiArt.getBytes();
             InetAddress address = InetAddress.getByName(host);
             DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
