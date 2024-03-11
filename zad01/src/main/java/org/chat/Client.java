@@ -18,17 +18,26 @@ public class Client {
     public static void main(String[] args){
         System.out.println("CLIENT IS RUNNING");
         Client client = new Client(getNickname());
-        client.start("127.0.0.1", 2137, "230.0.0.0", 4446);
+        client.start("127.0.0.1", 2137, "230.0.0.1", 4446);
     }
 
     public void start(String serverAddress, int serverPort, String multicastAddress, int multicastPort){
         try (Socket tcpSocket = new Socket(serverAddress, serverPort);
              PrintWriter out = new PrintWriter(tcpSocket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
-             DatagramSocket udpSocket = new DatagramSocket(tcpSocket.getLocalPort());
-             MulticastSocket multicastSocket = new MulticastSocket(multicastPort)){
+             DatagramSocket udpSocket = new DatagramSocket(tcpSocket.getLocalPort())){
 
+            MulticastSocket multicastSocket = new MulticastSocket(multicastPort);
             multicastSocket.joinGroup(InetAddress.getByName(multicastAddress));
+
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    multicastSocket.leaveGroup(InetAddress.getByName(multicastAddress));
+                    multicastSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }));
 
             while (true){
                 out.println(nickname);
