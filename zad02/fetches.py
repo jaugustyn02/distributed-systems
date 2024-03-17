@@ -22,8 +22,6 @@ async def fetch_imdb_find_title(title_input: str, rapidapi_api_key: str):
             results = data.get("titleResults").get("results")
             if not results:
                 raise HTTPException(status_code=404, detail=f"Movie not found: {title_input}")
-                # print(f"Movie not found: {title_input}")
-                # return None
             match = results[0]
             id = match.get("id")
             title = match.get("titleNameText", "-")
