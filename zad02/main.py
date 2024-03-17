@@ -63,29 +63,31 @@ async def ratings_raw(request: Request, title = Form(None), api_key = Form(None)
     if not title:
         raise HTTPException(status_code=400, detail="Title cannot be empty")
 
-    imdb_title_data = await fetch_imdb_find_title(title, rapidapi_api_key)
-    if not imdb_title_data:
-        raise HTTPException(status_code=404, detail="Movie not found")
+    imdb_find_data = await fetch_imdb_find_title(title, rapidapi_api_key)
+    if not imdb_find_data:
+        raise HTTPException(status_code=500, detail="Could not fetch movie data or movie not found")
 
-    imdb_title_id = imdb_title_data.get("id")
-    imdb_rating, avg_rating, ratings = None, None, {}
+    imdb_title_id = imdb_find_data.get("id")
+    imdb_data, avg_rating, ratings = None, None, {}
     if imdb_title_id:
-        imdb_rating = await fetch_imdb_data(imdb_title_id, rapidapi_api_key)
+        imdb_data = await fetch_imdb_data(imdb_title_id, rapidapi_api_key)
         ratings = await fetch_mdblist_ratings(imdb_title_id, rapidapi_api_key)
 
-        if imdb_rating:
-            ratings["imdb"] = imdb_rating
+        if imdb_data:
+            ratings["imdb"] = imdb_data["rating"]
         avg_rating = float("{:.2f}".format(sum(ratings.values()) / len(ratings)))
 
-    return {
-        "title": imdb_title_data["title"],
-        "year": imdb_title_data["year"],
-        "poster_url": imdb_title_data["poster_url"],
-        "type": imdb_rating["type"],
-        "genres": imdb_rating["genres"],
-        "avg_rating": avg_rating,
-        "ratings": ratings,
-    }
+    sorted_ratings = dict(sorted(ratings.items(), key=lambda x: x[1], reverse=True))
+    return JSONResponse(
+        {
+            "title": imdb_find_data["title"],
+            "release_date": imdb_find_data["year"],
+            "type": imdb_data["type"],
+            "genres": imdb_data["genres"],
+            "ratings": sorted_ratings,
+            "average_rating": avg_rating
+        }
+    )
 
 
 # Movie rate endpoint - HTML response
