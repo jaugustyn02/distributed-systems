@@ -1,0 +1,176 @@
+{
+	"id": "2f7ff555-9da1-4a13-baa1-db7c2a17b420",
+	"name": "Integration testing - Ratings",
+	"timestamp": "2024-03-21T09:49:54.508Z",
+	"collection_id": "33670814-955be147-1f77-4f88-859f-81100ea4a68f",
+	"folder_id": 0,
+	"environment_id": "0",
+	"totalPass": 0,
+	"delay": "0",
+	"persist": true,
+	"status": "finished",
+	"startedAt": "2024-03-21T09:49:43.953Z",
+	"totalFail": 0,
+	"results": [
+		{
+			"id": "4fbdd226-9012-4293-815e-3e2981b780ac",
+			"name": "Root Test",
+			"url": "http://127.0.0.1:8000/",
+			"time": 12,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				12
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "c612c1dc-56f1-471b-b911-9cd6f3fcf8a2",
+			"name": "Search Test (Form)",
+			"url": "http://127.0.0.1:8000/search",
+			"time": 7,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				7
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "c2898121-6b1b-4b47-8650-61328c08f9c4",
+			"name": "Wrong Auth Key Test",
+			"url": "http://127.0.0.1:8000/ratings",
+			"time": 11,
+			"responseCode": {
+				"code": 401,
+				"name": "Unauthorized"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				11
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "976c2cad-b56e-4070-ac27-02b66eb91d27",
+			"name": "Empty Title Test",
+			"url": "http://127.0.0.1:8000/ratings",
+			"time": 6,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				6
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "25ddd7fd-47cb-4b2f-b688-f3fe709f40cd",
+			"name": "Title Not Found Test",
+			"url": "http://127.0.0.1:8000/ratings",
+			"time": 1511,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				1511
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "54a5186a-a381-4c5c-9363-714b265c9d2b",
+			"name": "Ratings HTML Test",
+			"url": "http://127.0.0.1:8000/ratings",
+			"time": 3948,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				3948
+			],
+			"allTests": [
+				{}
+			]
+		},
+		{
+			"id": "f7d3e1e0-98e3-4b3c-b21b-bebf0fc92854",
+			"name": "Ratings JSON Test",
+			"url": "http://127.0.0.1:8000/ratings_raw",
+			"time": 3507,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {},
+			"testPassFailCounts": {},
+			"times": [
+				3507
+			],
+			"allTests": [
+				{}
+			]
+		}
+	],
+	"count": 1,
+	"totalTime": 9002,
+	"collection": {
+		"requests": [
+			{
+				"id": "4fbdd226-9012-4293-815e-3e2981b780ac",
+				"method": "GET"
+			},
+			{
+				"id": "c612c1dc-56f1-471b-b911-9cd6f3fcf8a2",
+				"method": "GET"
+			},
+			{
+				"id": "c2898121-6b1b-4b47-8650-61328c08f9c4",
+				"method": "POST"
+			},
+			{
+				"id": "976c2cad-b56e-4070-ac27-02b66eb91d27",
+				"method": "POST"
+			},
+			{
+				"id": "25ddd7fd-47cb-4b2f-b688-f3fe709f40cd",
+				"method": "POST"
+			},
+			{
+				"id": "54a5186a-a381-4c5c-9363-714b265c9d2b",
+				"method": "POST"
+			},
+			{
+				"id": "f7d3e1e0-98e3-4b3c-b21b-bebf0fc92854",
+				"method": "POST"
+			}
+		]
+	}
+}

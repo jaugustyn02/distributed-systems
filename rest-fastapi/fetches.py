@@ -26,7 +26,7 @@ async def fetch_imdb_find_title(title_input: str, rapidapi_api_key: str):
             id = match.get("id")
             title = match.get("titleNameText", "-")
             year = match.get("titleReleaseText", "-")
-            poster_url = match.get("titlePosterImageModel").get("url", "")
+            poster_url = match.get("titlePosterImageModel", {}).get("url", "")
             return {
                 "id": id,
                 "title": title,
@@ -74,13 +74,13 @@ async def fetch_mdblist_ratings(title_id: str, rapidapi_api_key: str):
             response = await client.get(url, headers=headers, params=querystring)
             response.raise_for_status()
             data = response.json()
-            ratings_data = data.get("ratings")
+            ratings_data = data.get("ratings", [])
             ratings = {}
             for rating in ratings_data:
                 source = rating.get("source")
                 if rating.get("score") is not None and source in mdblist_score_100_sources:
                     ratings[source] = rating.get("score") / 10 # convert 100 scale rating to 10 scale rating
-                elif  rating.get("value") is not None and source in mdblist_value_4_sources:
+                elif rating.get("value") is not None and source in mdblist_value_4_sources:
                     ratings[source] = rating.get("value") * 2.5 # convert 4-star rating to 10 scale rating
             return ratings
         except (httpx.RequestError, KeyError) as e:

@@ -32,7 +32,8 @@ async def exception_handler(request, exc):
             <a href="/"><button>Go back to home page</button></a>
         </body>
         </html>
-        """
+        """,
+        status_code=status_code
     )
 
 
@@ -68,16 +69,16 @@ async def ratings_raw(request: Request, title = Form(None), api_key = Form(None)
         raise HTTPException(status_code=500, detail="Could not fetch movie data or movie not found")
 
     imdb_title_id = imdb_find_data.get("id")
-    imdb_data, avg_rating, ratings = None, None, {}
+    imdb_data, avg_rating, mdb_ratings = None, None, {}
     if imdb_title_id:
         imdb_data = await fetch_imdb_data(imdb_title_id, rapidapi_api_key)
-        ratings = await fetch_mdblist_ratings(imdb_title_id, rapidapi_api_key)
+        mdb_ratings = await fetch_mdblist_ratings(imdb_title_id, rapidapi_api_key)
 
         if imdb_data:
-            ratings["imdb"] = imdb_data["rating"]
-        avg_rating = float("{:.2f}".format(sum(ratings.values()) / len(ratings)))
+            mdb_ratings["imdb"] = imdb_data["rating"]
+        avg_rating = float("{:.2f}".format(sum(mdb_ratings.values()) / len(mdb_ratings)))
 
-    sorted_ratings = dict(sorted(ratings.items(), key=lambda x: x[1], reverse=True))
+    sorted_ratings = dict(sorted(mdb_ratings.items(), key=lambda x: x[1], reverse=True))
     return JSONResponse(
         {
             "title": imdb_find_data["title"],
@@ -103,16 +104,17 @@ async def ratings(request: Request, title = Form(None), api_key = Form(None)):
         raise HTTPException(status_code=500, detail="Could not fetch movie data or movie not found")
 
     imdb_title_id = imdb_find_data.get("id")
-    imdb_data, avg_rating, ratings = None, None, {}
+    imdb_data, avg_rating, mdb_ratings = None, None, {}
     if imdb_title_id:
         imdb_data = await fetch_imdb_data(imdb_title_id, rapidapi_api_key)
-        ratings = await fetch_mdblist_ratings(imdb_title_id, rapidapi_api_key)
+        mdb_ratings = await fetch_mdblist_ratings(imdb_title_id, rapidapi_api_key)
 
-        if imdb_data:
-            ratings["imdb"] = imdb_data["rating"]
-        avg_rating = float("{:.2f}".format(sum(ratings.values()) / len(ratings)))
+        if imdb_data and imdb_data.get("rating"):
+            mdb_ratings["imdb"] = imdb_data["rating"]
+        if mdb_ratings:
+            avg_rating = float("{:.2f}".format(sum(mdb_ratings.values()) / len(mdb_ratings)))
 
-    sorted_ratings = dict(sorted(ratings.items(), key=lambda x: x[1], reverse=True))
+    sorted_ratings = dict(sorted(mdb_ratings.items(), key=lambda x: x[1], reverse=True))
     ratings_list = ''.join([f"<li>{source}: {rating}</li>" for source, rating in sorted_ratings.items()])
     return HTMLResponse(
         f"""
