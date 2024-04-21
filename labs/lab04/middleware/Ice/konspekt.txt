@@ -1,0 +1,15 @@
+9. Odpowiedz na poniższe pytania:
+• Jak nazywają się zmienne (nie: pola) serwantów implementujących kalkulator?
+     Nazywają się calcServant1 i calcServant2 (linie 27,28 w pliku IceServer.java).
+• Ile sztuk obiektów obecnie udostępnia klientom serwer?
+     2 Obiekty.
+• Jak nazywają się te obiekty?
+     calc11 i calc22 (linie 31,32 w pliku IceServer.java).
+• Z którym obiektem Java (tj. serwantem) (nazwa zmiennej) komunikował się klient?
+     Z obiektem calc11 (linia 27 w pliku IceClient.java).
+• W jaki sposób klient uzyskał referencję do tego konkretnego obiektu (tj. co zawiera referencja)?
+     Referencja zawierała identyfikator obiektu (calc11) oraz socket (protokuł, adres ip, port)
+• Co się stanie jeśli klient zrealizuje wywołanie na nieistniejącym obiekcie (przetestuj)?
+	Klient otrzyma wyjątek com.zeroc.Ice.ObjectNotExistException
+	
+10.
