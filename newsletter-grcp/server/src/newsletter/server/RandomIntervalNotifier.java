@@ -27,7 +27,6 @@ public class RandomIntervalNotifier {
         this.eventObservers = eventObservers;
         this.minTimeBetweenEvents = minTimeBetweenEvents;
         this.maxTimeBetweenEvents = maxTimeBetweenEvents;
-        // time between resending pending notifications - it should be called
         this.timeBetweenPendingNotifications = timeBetweenPendingNotifications;
     }
 
@@ -43,7 +42,7 @@ public class RandomIntervalNotifier {
                 try {
                     sleepRandomTime();
                     EventNotification event = RandomEventsGenerator.generateRandomEvent();
-                    System.out.println("Sending new random event: " + event.getTitle() + " in " + event.getCity() + " with tags: " + event.getTagsList());
+                    System.out.println("New event: " + event.getTitle() + " in " + event.getCity() + " with tags: " + event.getTagsList());
                     for (Map.Entry<Integer, SubscriptionRequest> entry : activeSubscriptions.entrySet()) {
                         SubscriptionRequest subscription = entry.getValue();
                         if (subscription.getCity().equals(event.getCity())
@@ -94,7 +93,6 @@ public class RandomIntervalNotifier {
                 }
             }
         });
-
 
         randomEventsThread.start();
         pendingNotificationsThread.start();

@@ -18,7 +18,14 @@ public class NewsletterServiceImpl extends NewsletterServiceImplBase{
     private final ConcurrentMap<Integer, List<EventNotification>> pendingNotifications = new ConcurrentHashMap<>();
 
     public NewsletterServiceImpl() {
-        RandomIntervalNotifier notifier = new RandomIntervalNotifier(activeSubscriptions, eventObservers, pendingNotifications, 0, 5, 5);
+        RandomIntervalNotifier notifier = new RandomIntervalNotifier(
+                activeSubscriptions,
+                eventObservers,
+                pendingNotifications,
+                0,
+                2,
+                5
+        );
         notifier.start();
     }
 
@@ -32,7 +39,7 @@ public class NewsletterServiceImpl extends NewsletterServiceImplBase{
 
     @Override
     public void unsubscribe(UserRequest request, StreamObserver<SubscriptionResponse> responseObserver) {
-        System.out.println("Unsubscription request received for user: " + request.getUserId());
+        System.out.println("Unsubscription request received from user: " + request.getUserId());
         SubscriptionResponse response = removeSubscription(request);
         pendingNotifications.remove(request.getUserId());
         responseObserver.onNext(response);
@@ -41,7 +48,7 @@ public class NewsletterServiceImpl extends NewsletterServiceImplBase{
 
     @Override
     public void getNotifications(UserRequest request, StreamObserver<EventNotification> responseObserver) {
-        System.out.println("Notifications request received for user: " + request.getUserId());
+        System.out.println("Notifications request received from user: " + request.getUserId());
         eventObservers.put(request.getUserId(), responseObserver);
     }
 
@@ -64,7 +71,6 @@ public class NewsletterServiceImpl extends NewsletterServiceImplBase{
 
     private SubscriptionResponse updateSubscription(SubscriptionRequest request) {
         try {
-            // if city is the same, update tags, else update city and tags
             if (activeSubscriptions.get(request.getUserId()).getCity().equals(request.getCity())) {
                 Set<String> tags = new HashSet<>(activeSubscriptions.get(request.getUserId()).getTagsList());
                 tags.addAll(request.getTagsList());
@@ -84,17 +90,6 @@ public class NewsletterServiceImpl extends NewsletterServiceImplBase{
             return SubscriptionResponse.newBuilder().setSuccess(true).setMessage("Unsubscribed successfully").build();
         } catch (Exception e) {
             return SubscriptionResponse.newBuilder().setSuccess(false).setMessage("Failed to unsubscribe").build();
-        }
-    }
-
-    private class onCancelHandler implements Runnable {
-        private final int userId;
-        public onCancelHandler(int userId) {
-            this.userId = userId;
-        }
-        @Override
-        public void run() {
-            eventObservers.remove(userId);
         }
     }
 }

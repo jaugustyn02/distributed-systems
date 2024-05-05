@@ -9,8 +9,8 @@ import java.util.Random;
 
 
 public class RandomEventsGenerator {
-    private final static List<String> cities = Arrays.asList("New York", "San Francisco", "Chicago", "Los Angeles", "Seattle", "Boston", "Austin");
-    private final static List<String> tags = Arrays.asList("Sports", "Politics", "Technology", "Business", "Science", "Health", "Entertainment");
+    private final static List<String> cities = Arrays.asList("New York", "San Francisco", "Chicago", "Los Angeles", "Boston", "Austin");
+    private final static List<String> tags = Arrays.asList("Sports", "Politics", "Technology", "Business", "Science", "Entertainment");
     private final static List<String> titles = Arrays.asList("Super Bowl", "Presidential Election", "Oscars", "World Cup", "SpaceX Launch", "Tailor Swift Concert", "Apple Event");
     private final static List<String> descriptions = Arrays.asList("This is a description", "This is another description", "This is a third description", "This is a fourth description", "This is a fifth description");
     private final static Random random = new Random();
@@ -19,7 +19,7 @@ public class RandomEventsGenerator {
 
     public static EventNotification generateRandomEvent() {
         return EventNotification.newBuilder()
-                .setType(EventNotification.NotificationType.NEW_EVENT)
+                .setType(generateRandomType())
                 .setTitle(generateRandomTitle())
                 .setDescription(generateRandomDescription())
                 .setCity(generateRandomCity())
@@ -50,5 +50,16 @@ public class RandomEventsGenerator {
 
     private static String generateRandomDescription() {
         return descriptions.get(random.nextInt(descriptions.size()));
+    }
+
+    private static EventNotification.NotificationType generateRandomType() {
+        float randomFloat = random.nextFloat();
+        if (randomFloat < 0.7) {
+            return EventNotification.NotificationType.NEW_EVENT;
+        } else if (randomFloat < 0.9) {
+            return EventNotification.NotificationType.EVENT_UPDATED;
+        } else {
+            return EventNotification.NotificationType.EVENT_CANCELLED;
+        }
     }
 }
