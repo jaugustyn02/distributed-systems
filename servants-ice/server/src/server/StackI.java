@@ -10,6 +10,9 @@ public class StackI implements Stack {
 
     @Override
     public void push(int value, Current current) {
+        if (top == stack.length - 1) {
+            return;
+        }
         stack[++top] = value;
     }
 

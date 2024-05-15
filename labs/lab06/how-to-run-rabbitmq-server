@@ -1,0 +1,9 @@
+4. Enable and Start the RabbitMQ Service. After installation, enable and start the RabbitMQ service:
+sudo systemctl enable rabbitmq-server
+sudo systemctl start rabbitmq-server
+
+There won’t be any visible response to these commands, but if you’d like to verify the status:
+sudo systemctl status rabbitmq-server
+
+5. Access RabbitMQ Management Console. To access the RabbitMQ management console, enable the RabbitMQ management plugin:
+sudo rabbitmq-plugins enable rabbitmq_management

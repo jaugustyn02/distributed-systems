@@ -15,14 +15,17 @@ public class IceServer {
             communicator = Util.initialize(args, "config.server");
             ObjectAdapter adapter = communicator.createObjectAdapter("Adapter");
 
-            StackI stack = new StackI();
-            adapter.add(stack, new Identity("stack", "shared"));
+            PalindromeCheckerI checker = new PalindromeCheckerI();
+            adapter.add(checker, new Identity("checker", "shared"));
+            System.out.println("Creating shared servant for: shared/checker");
 
-            CounterI counter = new CounterI();
-            adapter.add(counter, new Identity("counter", "shared"));
+            StringReverserI reverser = new StringReverserI();
+            adapter.add(reverser, new Identity("reverser", "shared"));
+            System.out.println("Creating shared servant for: shared/reverser");
 
-            ServantLocator servantLocator = new IceLocator();
+            ServantLocator servantLocator = new DedicatedLocator();
             adapter.addServantLocator(servantLocator, "dedicated");
+            adapter.activate();
 
             System.out.println("Entering event processing loop...");
             communicator.waitForShutdown();
