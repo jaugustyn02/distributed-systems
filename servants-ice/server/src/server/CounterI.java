@@ -8,11 +8,13 @@ public class CounterI implements Counter{
 
     @Override
     public void increment(Current current) {
+        System.out.println("<counter> Incrementing counter");
         value++;
     }
 
     @Override
     public long getValue(Current current) {
+        System.out.println("<counter> Returning counter value");
         return value;
     }
 }
