@@ -41,7 +41,7 @@ public class Doctor {
     public void sendOrder(String type, String patientName) throws IOException {
         String order = doctorName + ": " + patientName + " - " + type;
         channel.basicPublish(ORDER_EXCHANGE, type, null, order.getBytes());
-        System.out.println("["+doctorName+"]: Sent order: " + order);
+        System.out.print("\n["+doctorName+"]: Sent order: " + order);
         logActivity("ORDER: " + order);
     }
 
@@ -94,11 +94,11 @@ public class Doctor {
         doctor1.sendOrder("knee", "Patient1");
         doctor2.sendOrder("hip", "Patient2");
         doctor2.sendOrder("knee", "Patient3");
-        doctor1.sendOrder("elbow", "Patient4");
+//        doctor1.sendOrder("elbow", "Patient4");
 
         Thread consoleThread = new Thread(() -> {
             Scanner scanner = new Scanner(System.in);
-            System.out.print("Enter order <doctorNumber orderType patientName>: ");
+            System.out.print("\nEnter order <doctorNumber orderType patientName>: ");
             while (true) {
                 String command = scanner.nextLine();
                 String[] parts = command.split(" ");
