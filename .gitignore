@@ -264,3 +264,6 @@ fabric.properties
 
 # idea folder, uncomment if you don't need it
 # .idea
+
+# Lab files
+apache-zookeeper-3.8.4-bin/
