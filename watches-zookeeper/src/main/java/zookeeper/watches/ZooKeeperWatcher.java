@@ -1,16 +1,14 @@
 package main.java.zookeeper.watches;
 
 import org.apache.zookeeper.*;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.zookeeper.data.Stat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.util.Arrays;
 import java.util.List;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ZooKeeperWatcher implements Watcher {
     private static final Logger logger = LogManager.getLogger(ZooKeeperWatcher.class);
@@ -27,7 +25,11 @@ public class ZooKeeperWatcher implements Watcher {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        Thread shutdownHook = new Thread(this::stop);
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
+
+    // --------------------------- Main ---------------------------
 
     public static void main(String[] args){
         ZooKeeperWatcher watcher = new ZooKeeperWatcher("127.0.0.1", "2181", "/a");
@@ -39,10 +41,11 @@ public class ZooKeeperWatcher implements Watcher {
             zooKeeper.addWatch(zNodeRootPath, AddWatchMode.PERSISTENT_RECURSIVE);
             // Check if zNodeRootPath already exists
             if (zooKeeper.exists(zNodeRootPath, true) != null){
-                handleZnodeCreation(zNodeRootPath);
+                openExternalApp();
             }
         } catch (KeeperException | InterruptedException e) {
-            e.printStackTrace();
+            System.err.println("Failed to start the watcher. Check if the ZooKeeper server is running.");
+            System.exit(1);
         }
         logger.info("Started running");
         startInputConsole();
@@ -60,7 +63,7 @@ public class ZooKeeperWatcher implements Watcher {
 
     private void startInputConsole() {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        System.out.println("Available commands: print, exit.");
+        System.out.println("Available commands: print, exit, app.");
         while (true) {
             System.out.print("<console> ");
             try {
@@ -69,9 +72,12 @@ public class ZooKeeperWatcher implements Watcher {
                     stop();
                     break;
                 } else if (input.equals("print")) {
-                    printTree();
+                    printTree(zNodeRootPath, "");
+                } else if (input.equals("app")){
+                    System.out.print("<external app> ");
+                    writeToExternalAppProcess(br.readLine());
                 } else if (!input.isEmpty()){
-                    System.out.println("Unknown command. Available commands: print, exit.");
+                    System.out.println("Unknown command. Available commands: print, exit, app.");
                 }
             } catch (IOException e){
                 e.printStackTrace();
@@ -90,78 +96,117 @@ public class ZooKeeperWatcher implements Watcher {
             } else if (eventType == Event.EventType.NodeDeleted && path.startsWith(zNodeRootPath)) {
                 handleZnodeDeletion(path);
             }
-            if (eventType == Event.EventType.NodeChildrenChanged && path.startsWith(zNodeRootPath)) {
-                handleChildren(path);
-            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void handleZnodeCreation(String path) throws KeeperException, InterruptedException {
+    // --------------------------- Handlers ---------------------------
+
+    private void handleZnodeCreation(String path) throws InterruptedException, KeeperException {
         logger.info("Znode created: " + path);
-        if (path.equals(zNodeRootPath)) {
+        if (path.equals(zNodeRootPath)){
             openExternalApp();
+            updateExternalApp(0);
+        } else{
+            handleChildren(path);
         }
-        zooKeeper.getChildren(path, true);
     }
 
-    private void handleZnodeDeletion(String path){
+    private void handleZnodeDeletion(String path) throws InterruptedException, KeeperException {
         logger.info("Znode deleted: " + path);
-        if (path.startsWith(zNodeRootPath) && externalAppProcess != null) {
+        if (path.equals(zNodeRootPath) && externalAppProcess != null) {
             closeExternalApp();
+            zooKeeper.addWatch(zNodeRootPath, AddWatchMode.PERSISTENT_RECURSIVE);
+        } else {
+            handleChildren(path);
         }
     }
 
     private void handleChildren(String path) throws KeeperException, InterruptedException {
-        List<String> children = zooKeeper.getChildren(path, true);
-        logger.info("Number of children: " + children.size());
+        int numOfChildren = countAllChildren(zNodeRootPath);
+        logger.info("Number of children: " + numOfChildren);
 
-        writeToExternalAppProcess("erase");
-        writeToExternalAppProcess("dtext -180 100 0 \"Number of children: " + children.size() + "\"");
+        updateExternalApp(numOfChildren);
+
+        zooKeeper.addWatch(path, AddWatchMode.PERSISTENT_RECURSIVE);
     }
+
+    // --------------------------- External App ---------------------------
 
     private void openExternalApp() {
         try {
             externalAppProcess = Runtime.getRuntime().exec(new String[]{"DRAWEXE"});
             writeToExternalAppProcess("axo");
+            updateExternalApp(countAllChildren(zNodeRootPath));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void closeExternalApp() {
-        writeToExternalAppProcess("exit");
-        externalAppProcess.destroy();
+    private void updateExternalApp(int numOfChildren) {
+        writeToExternalAppProcess("erase");
+        writeToExternalAppProcess("dtext -180 100 0 \"Number of children: " + numOfChildren + "\"");
     }
 
-    private void printTree() {
-        System.out.println("Siema");
+    private void closeExternalApp() {
+        writeToExternalAppProcess("exit");
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            externalAppProcess.destroy();
+            externalAppProcess = null;
+        }
     }
+
+    // --------------------------- Utils ---------------------------
 
     private void writeToExternalAppProcess(String message) {
         if (externalAppProcess != null) {
             try {
-                OutputStream os = externalAppProcess.getOutputStream();
-                os.flush();
-                os.write(message.getBytes());
-                os.flush();
+                externalAppProcess.getOutputStream().write((message + "\n").getBytes());
+                externalAppProcess.getOutputStream().flush();
             } catch (IOException e) {
                 logger.error("Failed to write to the external process", e);
             }
         }
     }
 
-//    private static void printTree(String path, String indent) throws KeeperException, InterruptedException {
-//        Stat stat = zooKeeper.exists(path, false);
-//        if (stat == null) {
-//            return;
-//        }
-//        System.out.println(indent + path);
-//        List<String> children = zooKeeper.getChildren(path, false);
-//        for (String child : children) {
-//            printTree(path + "/" + child, indent + "  ");
-//        }
-//    }
+    private static void printTree(String path, String indent){
+        Stat stat;
+        try {
+            stat = zooKeeper.exists(path, false);
+        } catch (KeeperException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        if (stat == null) {
+            return;
+        }
+        System.out.println(indent + path);
+        List<String> children;
+        try {
+            children = zooKeeper.getChildren(path, false);
+        } catch (KeeperException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        for (String child : children) {
+            printTree(path + "/" + child, indent + "  ");
+        }
+    }
 
+    private static int countAllChildren(String path) {
+        int count = 0;
+        try {
+            List<String> children = zooKeeper.getChildren(path, false);
+            count += children.size();
+            for (String child : children) {
+                count += countAllChildren(path + "/" + child);
+            }
+        } catch (KeeperException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return count;
+    }
 }
